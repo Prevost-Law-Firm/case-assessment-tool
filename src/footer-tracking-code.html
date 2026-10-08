@@ -1,0 +1,1364 @@
+<script>
+(function () {
+  const WEBHOOK_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjcwNTZmMDYzMDA0Mzc1MjZjNTUzZDUxMzEi_pc";
+  
+  let alreadySubmitted = false;
+  const SIMPLE_PRODUCTION_RATE_PER_KWH = 0.12;
+
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  function show(id, shouldShow) {
+    const node = el(id);
+    if (!node) return;
+    node.style.display = shouldShow ? "block" : "none";
+  }
+  
+  function setSectionDisabled(sectionId, disabled) {
+    const section = el(sectionId);
+    if (!section) return;
+
+    if (disabled) {
+      section.classList.add("disabled-section");
+    } else {
+      section.classList.remove("disabled-section");
+    }
+
+    const fields = section.querySelectorAll("input, select, textarea");
+    fields.forEach(field => {
+      field.disabled = disabled;
+    });
+  }
+
+  function money(x) {
+    const n = Number(x || 0);
+    return "$" + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    
+    return n < 0 ? "-$" + formatted : "$" + formatted;
+  }
+
+  function num(id) {
+    const node = el(id);
+    if (!node) return 0;
+    const raw = (node.value || "").toString().trim();
+    if (!raw) return 0;
+    const parsed = parseFloat(raw.replace(/[^0-9.\-]/g, ""));
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  function val(id) {
+    const node = el(id);
+    if (!node) return "";
+    if (node.type === "checkbox") return node.checked ? "yes" : "no";
+    return (node.value || "").toString().trim();
+  }
+
+  function checked(id) {
+    const node = el(id);
+    return !!(node && node.checked);
+  }
+  
+  function noteHasValue(value) {
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }
+
+  function noteClean(value) {
+    return noteHasValue(value) ? String(value).trim() : "";
+  }
+
+  function noteLine(label, value) {
+    const v = noteClean(value);
+    if (!noteHasValue(v)) return "";
+    return `${label}: ${v}`;
+  }
+
+  function noteSection(title, lines) {
+    const filtered = lines.filter(item => noteHasValue(item));
+    if (filtered.length === 0) return "";
+    return `${title}\n${filtered.join("\n")}`;
+  }
+
+  function yesNo(value) {
+    const v = noteClean(value).toLowerCase();
+    if (v === "yes" || v === "true" || v === "on" || v === "1") return "Yes";
+    if (v === "no" || v === "false" || v === "0") return "No";
+    return noteClean(value);
+  }
+
+  function formatRecapEmailValue(value) {
+    const v = noteClean(value).toLowerCase();
+    if (v === "yes_mosaic") return "Yes - Mosaic";
+    if (v === "yes_other") return "Yes - Other";
+    if (v === "yes_mosaic_spanish") return "Yes - Mosaic Spanish";
+    if (v === "yes_other_spanish") return "Yes - Other Spanish";
+    if (v === "yes_everbright_tx_thsa") return "Yes - Everbright TX/THSA";
+    if (v === "no") return "No";
+    return noteClean(value);
+  }
+
+  function joinAddress(address, city, state, zip) {
+    return [noteClean(address), noteClean(city), noteClean(state), noteClean(zip)]
+      .filter(noteHasValue)
+      .join(", ");
+  }
+
+  function lenderName(prefix) {
+    const type = val(prefix + "_lender_type");
+    if (type === "mosaic") return "Mosaic";
+    if (type === "everbright") return "Everbright";
+    if (type === "other") return val(prefix + "_other_lender") || "Other";
+    return "";
+  }
+
+  function isCombinedTwoLoanCase() {
+    return (
+      val("two_loan_case") === "yes" &&
+      val("same_address") === "yes" &&
+      val("same_lender") === "yes"
+    );
+  }
+
+  function shouldUseTwoForms() {
+    return (
+      val("two_loan_case") === "yes" &&
+      (
+        val("same_address") === "no" ||
+        val("same_lender") === "no"
+      )
+    );
+  }
+
+  function prefillFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+
+    const mappings = {
+      contact_id: "contact_id",
+      case_assessment_link: "case_assessment_link",
+      first_name: "first_name",
+      last_name: "last_name",
+      phone: "phone",
+      email: "email"
+    };
+
+    Object.entries(mappings).forEach(([param, id]) => {
+      const v = params.get(param);
+      if (v && el(id)) el(id).value = v;
+    });
+
+    if (!val("case_assessment_link") && el("case_assessment_link")) {
+      el("case_assessment_link").value = window.location.href;
+    }
+  }
+
+  function setupConditionalLogic() {
+    show("joint_filer_section", val("joint_filer") === "yes");
+
+    const multiSystemAnswer = val("more_than_one_system");
+    const multiSystem = multiSystemAnswer === "yes";
+    const singleSystem = multiSystemAnswer === "no";
+
+    show("multi_system_section", multiSystem);
+    show("system1_section", multiSystem || singleSystem);
+    show("system2_section", multiSystem);
+
+    show("contact_attempts_section",
+      val("installer_in_business") === "in_business" ||
+      val("installer_in_business") === "unsure"
+    );
+
+    show("installer_qualifies_section", val("installer_in_business") === "in_business");
+
+    const twoLoan = val("two_loan_case") === "yes";
+    show("two_loan_questions", twoLoan);
+
+    const combined = isCombinedTwoLoanCase();
+    const separateForms = shouldUseTwoForms();
+
+    show("loan2_section", combined);
+    show("loan2_summary_block", combined);
+    show("combined_two_loan_notice", combined);
+    show("two_form_warning", separateForms);
+
+    show("loan1_other_lender_section", val("loan1_lender_type") === "other");
+    show("loan2_other_lender_section", val("loan2_lender_type") === "other");
+    
+    show("solar_business_warning", val("solar_personal_use") === "no");
+
+    const hasEverbright =
+      val("loan1_lender_type") === "everbright" ||
+      val("loan2_lender_type") === "everbright";
+    
+    show("everbright_welcome_call_section", hasEverbright);
+
+    const method = val("savings_calc_method");
+    show("electric_statements_section", method !== "");
+    show("avg_pre_post_section", method === "avg_pre_post");
+    show("solar_vs_usage_section", method === "solar_vs_usage");
+    show("simple_production_section", method === "simple_production");
+
+    const savingsType = val("savings_value_type");
+    show("percent_bill_section", method === "avg_pre_post" && savingsType === "percent");
+    show("promised_bill_section", method === "avg_pre_post" && savingsType === "dollar");
+
+    show("property_damage_section", val("property_damage") === "yes");
+    show("moving_explain_section", val("moving_selling_home") === "yes");
+    show("information_needed_section", val("consult_completed") === "no");
+    show("purchase_system_again_warning", val("purchase_system_again") === "yes");
+
+    const installerOOB = checked("installer_out_of_business");
+    show("same_warranty_question", installerOOB && isCombinedTwoLoanCase());
+
+    const sameWarranty = val("same_warranty_for_both");
+    const useSplitWarranty = installerOOB && isCombinedTwoLoanCase() && sameWarranty === "no";
+
+    show("shared_warranty_section", installerOOB && !useSplitWarranty);
+    show("loan_warranty_section", useSplitWarranty);
+    
+    const thsaDisabled = val("thsa_not_applicable") === "yes";
+    show("thsa_not_applicable_notice", thsaDisabled);
+    setSectionDisabled("home_solicitation_section", thsaDisabled);
+
+    if (thsaDisabled) {
+      if (el("verbal_cancel_notice")) el("verbal_cancel_notice").value = "";
+      if (el("seller_notice_cancel")) el("seller_notice_cancel").value = "";
+      if (el("lender_notice_cancel")) el("lender_notice_cancel").value = "";
+    }
+  }
+
+  function calculateDealerFeeForLoan(prefix) {
+    const rate = num(prefix + "_interest_rate");
+    const loan = num(prefix + "_amount");
+    const disclosed = val(prefix + "_dealer_fee_disclosed").toLowerCase();
+
+    let dealerPercent = 0;
+    let dealerBandLabel = 0;
+
+    if (rate <= 2.9 && rate > 0) {
+      dealerPercent = 0.30;
+      dealerBandLabel = 30;
+    } else if (rate <= 4.9 && rate > 0) {
+      dealerPercent = 0.25;
+      dealerBandLabel = 25;
+    } else if (rate <= 5.9 && rate > 0) {
+      dealerPercent = 0.20;
+      dealerBandLabel = 20;
+    } else if (rate <= 6.9 && rate > 0) {
+      dealerPercent = 0.15;
+      dealerBandLabel = 15;
+    } else if (rate <= 8.9 && rate > 0) {
+      dealerPercent = 0.10;
+      dealerBandLabel = 10;
+    }
+
+    let amount = loan * dealerPercent;
+    let explain = "Enter loan amount and interest rate to estimate dealer fee.";
+
+    if (loan > 0 && rate > 0) {
+      explain =
+        `Based on rate ${rate.toFixed(2)}%, dealer fee band = ${dealerBandLabel}% → ` +
+        `${money(loan)} × ${Math.round(dealerPercent * 100)}% = ${money(amount)}.`;
+
+      if (disclosed === "yes") {
+        explain += " Dealer fee disclosed → treated as $0 in damages.";
+        amount = 0;
+      }
+    }
+
+    return { amount, explain };
+  }
+
+  function calculateMosaicForLoan(prefix, dealerFeeAmt) {
+    const lender = lenderName(prefix).toLowerCase();
+    const rate = num(prefix + "_interest_rate");
+    const loanTermY = num(prefix + "_term");
+
+    let amount = 0;
+    let explain = "Select lender to see if Mosaic interest damage applies.";
+
+    if (lender === "mosaic" && dealerFeeAmt > 0 && rate > 0) {
+      const P = dealerFeeAmt;
+      const i = (rate / 100) / 12;
+      const N = (loanTermY > 0 ? loanTermY * 12 : 300);
+
+      if (i > 0) {
+        const payment = P * (i * Math.pow(1 + i, N)) / (Math.pow(1 + i, N) - 1);
+        const totalInterest = (payment * N) - P;
+        const discRate = rate > 0 ? rate / 100 : 0.05;
+        const years = loanTermY > 0 ? loanTermY : 25;
+        const npv = totalInterest / Math.pow(1 + discRate, years);
+
+        amount = Math.max(0, npv);
+        explain =
+          `Uses dealer fee as principal (${money(P)}), rate ${rate.toFixed(2)}% over ${years} years. ` +
+          `Discounted Mosaic interest damage ≈ ${money(amount)}.`;
+      }
+    } else if (lender === "mosaic") {
+      explain = "Mosaic lender selected, but dealer fee is $0 or rate missing, so interest damage = $0.";
+    } else if (lender) {
+      explain = "Mosaic interest damage only applies when lender is Mosaic.";
+    }
+
+    return { amount, explain };
+  }
+
+  function calculateWarrantyForLoan(loanKeyForDisplay) {
+    if (!checked("installer_out_of_business")) {
+      return { amount: 0, explain: "No warranty breach selected → $0 warranty damage." };
+    }
+
+    let yearsLost = 0;
+
+    if (isCombinedTwoLoanCase() && val("same_warranty_for_both") === "no") {
+      yearsLost = num(loanKeyForDisplay === "loan1" ? "loan1_years_warranty_lost" : "loan2_years_warranty_lost");
+    } else {
+      yearsLost = num("shared_years_warranty_lost");
+    }
+
+    let amount = 0;
+    const max = 7500;
+    let explain = "";
+
+    if (yearsLost <= 1) {
+      amount = 0;
+      explain = "Installer out of business / not honoring warranty, but ≤ 1 year lost → $0 warranty damage.";
+    } else if (yearsLost <= 5) {
+      amount = 2000;
+      explain = `Years of warranty lost = ${yearsLost} → tiered warranty damage = ${money(amount)}.`;
+    } else if (yearsLost <= 10) {
+      amount = 5000;
+      explain = `Years of warranty lost = ${yearsLost} → tiered warranty damage = ${money(amount)}.`;
+    } else {
+      amount = max;
+      explain = `Years of warranty lost = ${yearsLost} → max-tier warranty damage = ${money(amount)}.`;
+    }
+
+    return { amount, explain };
+  }
+
+    function calculateSharedEnergyDamage() {
+      const method = val("savings_calc_method");
+      const payingMore = val("paying_more_now").toLowerCase();
+      const loanTermY = Math.max(num("loan1_term"), num("loan2_term"));
+    
+      let amount = 0;
+      let explain = "";
+    
+      /*
+       * Keep the existing "paying more" gate for the older methods.
+       * Simple Production Math is allowed to calculate regardless,
+       * because the calculation itself may prove there is no savings claim.
+       */
+      if (payingMore === "no" && method !== "simple_production") {
+        return {
+          amount: 0,
+          explain: "No electricity bill damage: client reports paying less overall for electric + loan payment."
+        };
+      }
+    
+      if (method === "avg_pre_post") {
+        const preBill = num("pre_solar_bill");
+        const postBill = num("post_solar_bill");
+        const savingsType = val("savings_value_type");
+    
+        if (preBill <= 0 || postBill <= 0 || loanTermY <= 0) {
+          return {
+            amount: 0,
+            explain: "Enter pre-solar bill, post-solar bill, and loan term to calculate energy savings damage."
+          };
+        }
+    
+        if (savingsType === "percent") {
+          const percentEntry = num("percent_of_bill");
+    
+          if (percentEntry <= 0) {
+            return {
+              amount: 0,
+              explain: "Percent of bill selected. Enter a promised savings percentage."
+            };
+          }
+    
+          const prom = percentEntry / 100;
+          const monthlyBase = postBill - (preBill * (1 - prom));
+    
+          amount = Math.max(0, monthlyBase * 12 * loanTermY);
+    
+          explain =
+            `Percent method: Pre = ${money(preBill)}, Post = ${money(postBill)}, promised savings = ${percentEntry}%. ` +
+            `Estimated energy savings damages ≈ ${money(amount)}.`;
+    
+          return { amount, explain };
+        }
+    
+        if (savingsType === "dollar") {
+          const promisedBill = num("promised_bill_amount");
+    
+          if (promisedBill <= 0) {
+            return {
+              amount: 0,
+              explain: "Dollar Amount selected. Enter the promised post-solar bill amount."
+            };
+          }
+    
+          const monthlyBase = postBill - promisedBill;
+    
+          amount = Math.max(0, monthlyBase * 12 * loanTermY);
+    
+          explain =
+            `Custom bill method: Post = ${money(postBill)}, promised post-solar bill = ${money(promisedBill)}. ` +
+            `Estimated energy savings damages ≈ ${money(amount)}.`;
+    
+          return { amount, explain };
+        }
+    
+        return {
+          amount: 0,
+          explain: "Choose whether to use Percent of bill (%) or Dollar Amount ($)."
+        };
+      }
+    
+      if (method === "solar_vs_usage") {
+        const percentEntry = num("solar_percent_of_bill");
+        const avgUsage = num("avg_usage_kwh");
+        const pricePerKwh = num("price_per_kwh");
+        const avgSolar = num("avg_solar_produced_kwh");
+    
+        if (percentEntry <= 0 || avgUsage <= 0 || pricePerKwh <= 0 || loanTermY <= 0) {
+          return {
+            amount: 0,
+            explain: "Enter usage, solar produced, price per kWh, loan term, and promised savings %."
+          };
+        }
+    
+        const prom = percentEntry / 100;
+        const kwhAfterSolar = avgUsage - avgSolar;
+        const kwhPromisedOffset = avgUsage * (1 - prom);
+        const monthlyKwhDelta = kwhAfterSolar - kwhPromisedOffset;
+        const monthlyDollarDelta = monthlyKwhDelta * pricePerKwh;
+    
+        amount = Math.max(0, monthlyDollarDelta * 12 * loanTermY);
+    
+        explain =
+          `Solar Production vs Usage method: Usage = ${avgUsage} kWh, Solar = ${avgSolar} kWh, price = ${money(pricePerKwh)}. ` +
+          `Estimated energy savings damages ≈ ${money(amount)}.`;
+    
+        return { amount, explain };
+      }
+    
+      if (method === "simple_production") {
+        const annualProduction = num("estimated_annual_production_kwh");
+        const monthlyLoanPayment = num("initial_solar_monthly_payment");
+    
+        if (annualProduction <= 0 || monthlyLoanPayment <= 0 || loanTermY <= 0) {
+          return {
+            amount: 0,
+            explain: "Enter system estimated production, Initial Solar Monthly Payment, and loan term to calculate Simple Production Math."
+          };
+        }
+    
+        const annualProjectedSavings =
+          annualProduction * SIMPLE_PRODUCTION_RATE_PER_KWH;
+    
+        const monthlyProjectedSavings =
+          annualProjectedSavings / 12;
+    
+        /*
+         * Raw Simple Math result.
+         *
+         * Example:
+         * $275 payment - $4,000 projected monthly savings
+         * = -$3,725
+         */
+        const rawMonthlyResult = Math.round(
+          (monthlyLoanPayment - monthlyProjectedSavings) * 100
+        ) / 100;
+    
+        /*
+         * NEGATIVE:
+         * Show the actual negative result to Sales,
+         * but apply $0 to damages.
+         */
+        if (rawMonthlyResult < 0) {
+          amount = 0;
+    
+          const displayText =
+            `${money(rawMonthlyResult)} / month — No savings claim`;
+    
+          explain =
+            `Simple Production Math: Estimated production = ${annualProduction} kWh/year × ${money(SIMPLE_PRODUCTION_RATE_PER_KWH)} = ${money(annualProjectedSavings)} yearly projected savings. ` +
+            `Monthly projected savings = ${money(monthlyProjectedSavings)}. ` +
+            `Initial Solar Monthly Payment = ${money(monthlyLoanPayment)}. ` +
+            `Simple Math result = ${money(rawMonthlyResult)} per month. ` +
+            `Because the result is negative, there is no savings claim and $0 is applied to total damages.`;
+    
+          return {
+            amount,
+            displayText,
+            rawMonthlyResult,
+            noSavingsClaim: true,
+            explain
+          };
+        }
+    
+        /*
+         * EXACTLY ZERO:
+         * Show $0 — not "No savings claim".
+         */
+        if (rawMonthlyResult === 0) {
+          amount = 0;
+    
+          explain =
+            `Simple Production Math: Estimated production = ${annualProduction} kWh/year × ${money(SIMPLE_PRODUCTION_RATE_PER_KWH)} = ${money(annualProjectedSavings)} yearly projected savings. ` +
+            `Monthly projected savings = ${money(monthlyProjectedSavings)}. ` +
+            `Initial Solar Monthly Payment = ${money(monthlyLoanPayment)}. ` +
+            `Simple Math result = $0.`;
+    
+          return {
+            amount: 0,
+            displayText: "$0",
+            rawMonthlyResult: 0,
+            noSavingsClaim: false,
+            claimQuality: "Good savings claim",
+            explain
+          };
+        }
+    
+        /*
+         * POSITIVE:
+         * Keep the existing CAT behavior:
+         * monthly damages × 12 × loan term.
+         */
+        amount = rawMonthlyResult * 12 * loanTermY;
+    
+        explain =
+          `Simple Production Math: Estimated production = ${annualProduction} kWh/year × ${money(SIMPLE_PRODUCTION_RATE_PER_KWH)} = ${money(annualProjectedSavings)} yearly projected savings. ` +
+          `Monthly projected savings = ${money(monthlyProjectedSavings)}. ` +
+          `Initial Solar Monthly Payment = ${money(monthlyLoanPayment)}. ` +
+          `Monthly savings damage = ${money(rawMonthlyResult)}. ` +
+          `${money(rawMonthlyResult)} × 12 months × ${loanTermY} years = ${money(amount)} estimated energy savings damages.`;
+    
+        return {
+          amount,
+          displayText: money(amount),
+          rawMonthlyResult,
+          noSavingsClaim: false,
+          claimQuality: rawMonthlyResult <= 25
+            ? "Good savings claim"
+            : "Great savings claim",
+          explain
+        };
+      }
+    
+      return {
+        amount: 0,
+        explain: "Select how you want to calculate promised savings."
+      };
+    }
+
+  function calculateSharedInstallDamage() {
+    let missingDamage = 0;
+    let mfgDamage = 0;
+    const lines = [];
+
+    if (checked("issue_missing_battery")) {
+      missingDamage += 12500;
+      lines.push(`Battery / Powerwall missing: ${money(12500)}`);
+    }
+    if (checked("issue_battery_not_activated")) {
+      missingDamage += 3500;
+      lines.push(`Battery installed but not activated: ${money(3500)}`);
+    }
+    if (checked("issue_wrong_panels")) {
+      missingDamage += 4000;
+      lines.push(`Wrong wattage panels installed: ${money(4000)}`);
+    }
+
+    const missingPanels = num("missing_panels_count");
+    if (missingPanels > 0) {
+      const panelsAmt = missingPanels * 650;
+      missingDamage += panelsAmt;
+      lines.push(`Missing panels (${missingPanels} × ${money(650)}): ${money(panelsAmt)}`);
+    }
+
+    if (checked("issue_missing_surge")) {
+      missingDamage += 1000;
+      lines.push(`Missing System Surge Protector: ${money(1000)}`);
+    }
+
+    if (checked("issue_inverter_sun")) {
+      mfgDamage += 2000;
+      lines.push(`Inverter installed in direct sun: ${money(2000)}`);
+    }
+
+    const amount = missingDamage + mfgDamage;
+    const explain = lines.length
+      ? lines.join(" | ") + ` | Installation subtotal: ${money(amount)}.`
+      : "No installation or component issues selected → $0 for this category.";
+
+    return { amount, missingDamage, mfgDamage, explain };
+  }
+
+  function calculateRescission() {
+    const thsaDisabled = val("thsa_not_applicable") === "yes";
+    const sellerNotice = thsaDisabled ? "" : val("seller_notice_cancel");
+
+    const unsafe = checked("issue_unsafe_wiring");
+    const neverCompleted = checked("issue_never_completed");
+    const noBuyback = checked("issue_no_buyback");
+
+    const sellerMissingOrBlank =
+      sellerNotice === "missing_form" ||
+      sellerNotice === "blank_form";
+
+    const rescission = unsafe || neverCompleted || noBuyback || sellerMissingOrBlank;
+
+    let reason = "No rescission-level code or completion issues selected.";
+
+    if (rescission) {
+      const reasons = [];
+      if (unsafe) reasons.push("Unsafe wiring / code violation");
+      if (neverCompleted) reasons.push("System never installed / completed");
+      if (noBuyback) reasons.push("No solar buyback plan available");
+      if (sellerMissingOrBlank) reasons.push("Seller notice of cancellation missing or blank");
+      reason = `Rescission Likely triggered by: ${reasons.join(", ")}.`;
+    }
+
+    return { rescission, reason };
+  }
+
+  function calculateStrength(total, combinedLoanAmount, rescission) {
+    const sellerMissingOneOfFour =
+      val("thsa_not_applicable") === "yes"
+        ? false
+        : val("seller_notice_cancel") === "missing_1_of_4";
+    let installerYears = num("shared_years_warranty_lost");
+
+    if (isCombinedTwoLoanCase() && val("same_warranty_for_both") === "no") {
+      installerYears = Math.max(num("loan1_years_warranty_lost"), num("loan2_years_warranty_lost"));
+    }
+
+    let strength = "Not Strong Enough";
+    let explain = "";
+
+    if (rescission) {
+      strength = "Rescission Likely";
+      explain = "Case strength elevated because rescission-level issue is present.";
+      return { strength, explain };
+    }
+
+    if (combinedLoanAmount > 0 && total > combinedLoanAmount * 0.60) {
+      strength = "Strong";
+    } else if (total > 20000) {
+      strength = "Medium";
+    } else if (total > 10000) {
+      strength = "Weak";
+    }
+
+    if (checked("installer_out_of_business") && installerYears > 3) {
+      strength = "Strong";
+    }
+
+    if (sellerMissingOneOfFour) {
+      strength = "Strong";
+    }
+
+    if (combinedLoanAmount > 0) {
+      const pct = (total / combinedLoanAmount) * 100;
+      explain =
+        `Total damages = ${money(total)} ≈ ${pct.toFixed(1)}% of loan amount (${money(combinedLoanAmount)}).`;
+    } else {
+      explain = "Enter a loan amount to compare total damages against loan size.";
+    }
+
+    return { strength, explain };
+  }
+
+  function calculateLoan(prefix) {
+    const dealer = calculateDealerFeeForLoan(prefix);
+    const mosaic = calculateMosaicForLoan(prefix, dealer.amount);
+    const warranty = calculateWarrantyForLoan(prefix);
+    const subtotal = dealer.amount + mosaic.amount + warranty.amount;
+
+    return {
+      dealer,
+      mosaic,
+      warranty,
+      subtotal,
+      lender: lenderName(prefix),
+      amount: num(prefix + "_amount"),
+      term: num(prefix + "_term")
+    };
+  }
+
+  function updateSummary() {
+    const loan1 = calculateLoan("loan1");
+    const combined = isCombinedTwoLoanCase();
+    const loan2 = combined ? calculateLoan("loan2") : null;
+
+    const sharedEnergy = calculateSharedEnergyDamage();
+    const sharedInstall = calculateSharedInstallDamage();
+    const oopDamage = num("oop_costs");
+    const oopExplain = oopDamage > 0
+      ? `Client reported ${money(oopDamage)} in out-of-pocket costs.`
+      : "No out-of-pocket costs entered → $0 for this category.";
+
+    const rescissionObj = calculateRescission();
+
+    const combinedLoanAmount = loan1.amount + (loan2 ? loan2.amount : 0);
+    const total =
+      loan1.subtotal +
+      (loan2 ? loan2.subtotal : 0) +
+      sharedEnergy.amount +
+      oopDamage +
+      sharedInstall.amount;
+
+    const strengthObj = calculateStrength(total, combinedLoanAmount, rescissionObj.rescission);
+
+    if (el("loan1_prevDealerFee")) el("loan1_prevDealerFee").textContent = money(loan1.dealer.amount);
+    if (el("loan1_prevMosaicDamage")) el("loan1_prevMosaicDamage").textContent = money(loan1.mosaic.amount);
+    if (el("loan1_prevWarrantyDamage")) el("loan1_prevWarrantyDamage").textContent = money(loan1.warranty.amount);
+    if (el("loan1_prevSubtotal")) el("loan1_prevSubtotal").textContent = money(loan1.subtotal);
+
+    if (loan2) {
+      if (el("loan2_prevDealerFee")) el("loan2_prevDealerFee").textContent = money(loan2.dealer.amount);
+      if (el("loan2_prevMosaicDamage")) el("loan2_prevMosaicDamage").textContent = money(loan2.mosaic.amount);
+      if (el("loan2_prevWarrantyDamage")) el("loan2_prevWarrantyDamage").textContent = money(loan2.warranty.amount);
+      if (el("loan2_prevSubtotal")) el("loan2_prevSubtotal").textContent = money(loan2.subtotal);
+    }
+
+    if (el("prevEnergyDamage")) {
+     el("prevEnergyDamage").textContent =
+      sharedEnergy.displayText || money(sharedEnergy.amount);
+    }
+    
+    if (el("prevOOPDamage")) el("prevOOPDamage").textContent = money(oopDamage);
+    if (el("prevInstallDamage")) el("prevInstallDamage").textContent = money(sharedInstall.amount);
+    if (el("prevTotalDamage")) el("prevTotalDamage").textContent = money(total);
+    if (el("prevRescission")) el("prevRescission").textContent = rescissionObj.rescission ? "Yes" : "No";
+    if (el("prevStrength")) el("prevStrength").textContent = strengthObj.strength;
+
+    if (el("detailDealer")) {
+      el("detailDealer").textContent = combined
+        ? `Loan 1: ${loan1.dealer.explain} Loan 2: ${loan2.dealer.explain}`
+        : loan1.dealer.explain;
+    }
+    if (el("detailMosaic")) {
+      el("detailMosaic").textContent = combined
+        ? `Loan 1: ${loan1.mosaic.explain} Loan 2: ${loan2.mosaic.explain}`
+        : loan1.mosaic.explain;
+    }
+    if (el("detailEnergy")) {
+      const detailEnergy = el("detailEnergy");
+
+      detailEnergy.textContent = sharedEnergy.explain;
+
+      if (sharedEnergy.claimQuality) {
+        detailEnergy.appendChild(document.createTextNode(" "));
+
+        const claimText = document.createElement("strong");
+        claimText.textContent = sharedEnergy.claimQuality + ".";
+
+        detailEnergy.appendChild(claimText);
+      }
+    }
+    if (el("detailWarranty")) {
+      el("detailWarranty").textContent = combined
+        ? `Loan 1: ${loan1.warranty.explain} Loan 2: ${loan2.warranty.explain}`
+        : loan1.warranty.explain;
+    }
+    if (el("detailOOP")) el("detailOOP").textContent = oopExplain;
+    if (el("detailInstall")) el("detailInstall").textContent = sharedInstall.explain;
+    if (el("detailTotal")) {
+      el("detailTotal").textContent =
+        `Combined estimate = Loan 1 (${money(loan1.subtotal)})` +
+        (loan2 ? ` + Loan 2 (${money(loan2.subtotal)})` : "") +
+        ` + Shared Energy (${money(sharedEnergy.amount)}) + OOP (${money(oopDamage)}) + Install (${money(sharedInstall.amount)}) = ${money(total)}.`;
+    }
+    if (el("detailStrength")) el("detailStrength").textContent = strengthObj.explain;
+  }
+  
+  function buildCaseAssessmentNote() {
+    const primarySignerFull = [noteClean(val("first_name")), noteClean(val("last_name"))]
+      .filter(noteHasValue)
+      .join(" ");
+
+    const jointSignerFull = [noteClean(val("joint_first_name")), noteClean(val("joint_last_name"))]
+      .filter(noteHasValue)
+      .join(" ");
+
+    const systemAddressOneFull = joinAddress(
+      val("system1_address"),
+      val("system1_city"),
+      val("system1_state"),
+      val("system1_zip")
+    );
+
+    const systemAddressTwoFull = joinAddress(
+      val("system2_address"),
+      val("system2_city"),
+      val("system2_state"),
+      val("system2_zip")
+    );
+
+    const combined = isCombinedTwoLoanCase();
+    const thsaDisabled = val("thsa_not_applicable") === "yes";
+
+    const selectedInstallationIssues = [
+      checked("issue_inverter_sun") ? "Inverter Installed in Direct Sun" : "",
+      checked("issue_never_completed") ? "System Never Installed / Completed" : "",
+      checked("issue_no_buyback") ? "No Solar Buyback Plan Available" : "",
+      checked("issue_missing_battery") ? "Battery / Powerwall Missing" : "",
+      checked("issue_battery_not_activated") ? "Battery Installed but Not Activated" : "",
+      checked("issue_wrong_panels") ? "Wrong Wattage Panels Installed" : "",
+      checked("issue_missing_surge") ? "Missing System Surge Protector" : "",
+      checked("issue_unsafe_wiring") ? "Unsafe Wiring or Code Violation" : ""
+    ].filter(noteHasValue);
+
+    const identifyingInfo = noteSection("IDENTIFYING INFORMATION", [
+      noteLine("Primary Signer", primarySignerFull),
+      noteLine("Primary Email", val("email")),
+      noteLine("Primary Phone", val("phone")),
+      noteLine("Joint Filer", yesNo(val("joint_filer"))),
+      val("joint_filer") === "yes" ? noteLine("Joint Filer Name", jointSignerFull) : "",
+      val("joint_filer") === "yes" ? noteLine("Joint Filer Email", val("joint_email")) : "",
+      val("joint_filer") === "yes" ? noteLine("Joint Filer Phone", val("joint_phone")) : "",
+      val("joint_filer") === "yes" ? noteLine("Relationship to Primary Filer", val("joint_relationship")) : ""
+    ]);
+
+    const systemPropertyInfo = noteSection("SYSTEM / PROPERTY INFORMATION", [
+      noteLine("Solar For Personal Use / Not Business", yesNo(val("solar_personal_use"))),
+      noteLine("TX PNC - Homestead At Signing", yesNo(val("tx_homestead_at_signing"))),
+      noteLine("More Than One Solar System", yesNo(val("more_than_one_system"))),
+      noteLine("How Many Systems", val("system_count")),
+      noteLine("Interconnected", yesNo(val("systems_interconnected"))),
+      noteLine("Can Pull Production Reports for Each", yesNo(val("production_reports_each"))),
+      noteLine("System Address 1", systemAddressOneFull),
+      noteHasValue(systemAddressTwoFull) ? noteLine("System Address 2", systemAddressTwoFull) : ""
+    ]);
+
+    const contractInstallerInfo = noteSection("CONTRACT / INSTALLER INFORMATION", [
+      noteLine("Contracts Available", val("has_contracts")),
+      noteLine("Installer In Business", val("installer_in_business")),
+      val("installer_in_business") === "in_business"
+        ? noteLine("If In Business, What Qualifies Them", val("installer_qualifies_text"))
+        : "",
+      noteLine("60 Days Documented Contact Attempts", yesNo(val("contact_attempts_60_days")))
+    ]);
+
+    const loanStructureInfo = noteSection("LOAN STRUCTURE", [
+      noteLine("Two Loan Case", yesNo(val("two_loan_case"))),
+      val("two_loan_case") === "yes" ? noteLine("Same Address", yesNo(val("same_address"))) : "",
+      val("two_loan_case") === "yes" ? noteLine("Same Lender", yesNo(val("same_lender"))) : "",
+      noteLine("Combined Two Loan Case", combined ? "Yes" : "No"),
+      noteLine("Separate Forms Required", shouldUseTwoForms() ? "Yes" : "No")
+    ]);
+
+    const loan1Section = noteSection("LOAN 1", [
+      noteLine("Installer", val("loan1_installer")),
+      noteLine("Lender Type", val("loan1_lender_type")),
+      noteLine("Lender Name", lenderName("loan1")),
+      noteLine("Other Lender", val("loan1_other_lender")),
+      noteLine("Loan Amount", val("loan1_amount")),
+      noteLine("Interest Rate", val("loan1_interest_rate")),
+      noteLine("Loan Term (Years)", val("loan1_term")),
+      noteLine("Loan Payment", val("loan1_payment")),
+      noteLine("Dealer Fee Disclosed", yesNo(val("loan1_dealer_fee_disclosed"))),
+      noteLine("Choice of Lender", val("loan1_choice_of_lender")),
+      noteLine("Warranty Length", val("loan1_warranty_length"))
+    ]);
+
+    const loan2Section = combined
+      ? noteSection("LOAN 2", [
+          noteLine("Installer", val("loan2_installer")),
+          noteLine("Lender Type", val("loan2_lender_type")),
+          noteLine("Lender Name", lenderName("loan2")),
+          noteLine("Other Lender", val("loan2_other_lender")),
+          noteLine("Loan Amount", val("loan2_amount")),
+          noteLine("Interest Rate", val("loan2_interest_rate")),
+          noteLine("Loan Term (Years)", val("loan2_term")),
+          noteLine("Loan Payment", val("loan2_payment")),
+          noteLine("Dealer Fee Disclosed", yesNo(val("loan2_dealer_fee_disclosed"))),
+          noteLine("Choice of Lender", val("loan2_choice_of_lender")),
+          noteLine("Warranty Length", val("loan2_warranty_length"))
+        ])
+      : "";
+
+    const sharedLoanNotesSection = noteSection("SHARED LOAN / PROMISES", [
+      noteLine("Costs Not Associated With Solar Purchase", val("shared_non_solar_costs")),
+      noteLine("Additional Inclusions Notes", val("shared_inclusions_notes")),
+      noteLine("Initial Solar Monthly Payment", val("initial_solar_monthly_payment")),
+      noteLine("Getting Production Promised", yesNo(val("production_promised"))),
+      noteLine("Tax Promises Made", val("tax_promises")),
+      noteLine("Tax Credit Received", yesNo(val("tax_credit_received"))),
+      noteLine("Applied Toward Loan", yesNo(val("applied_toward_loan")))
+    ]);
+
+    const electricSavingsSection = noteSection("ELECTRIC SAVINGS", [
+      noteLine("Getting Promised Electric Savings", yesNo(val("promised_savings_received"))),
+      noteLine("Paying More Now With Electric + Loan", yesNo(val("paying_more_now"))),
+      noteLine("Savings Calculation Method", val("savings_calc_method")),
+      noteLine("12–18 Months of Electric Statements Available", yesNo(val("electric_statements_available"))),
+      noteLine("Electric Savings Promises Made", val("electric_promises_text")),
+      noteLine("Pre-Solar Electric Bill", val("pre_solar_bill")),
+      noteLine("Post-Solar Electric Bill", val("post_solar_bill")),
+      noteLine("Savings Expression Type", val("savings_value_type")),
+      noteLine("Percent of Bill", val("percent_of_bill")),
+      noteLine("Promised Bill Amount", val("promised_bill_amount")),
+      noteLine("Solar Percent of Bill", val("solar_percent_of_bill")),
+      noteLine("Avg Electricity Usage (kWh)", val("avg_usage_kwh")),
+      noteLine("Price per kWh", val("price_per_kwh")),
+      noteLine("Avg Solar Produced (kWh)", val("avg_solar_produced_kwh")),
+      noteLine("System Estimated Production (kWh per year)", val("estimated_annual_production_kwh"))
+    ]);
+
+    const physicalInstallationSection = noteSection("PHYSICAL / INSTALLATION OBSERVATIONS", [
+      noteLine("Panels Covered in Shade", yesNo(val("panels_in_shade"))),
+      noteLine("Inverter Box Outside", yesNo(val("inverter_box_outside"))),
+      noteLine("Property Damage", yesNo(val("property_damage"))),
+      val("property_damage") === "yes" ? noteLine("Property Damage Description", val("property_damage_description")) : "",
+      val("property_damage") === "yes" ? noteLine("Repairs Done / Why Not", val("property_damage_repairs")) : ""
+    ]);
+
+    const warrantyOutOfPocketSection = noteSection("WARRANTY / OUT-OF-POCKET", [
+      noteLine("Installer Out of Business / Not Honoring Warranty", checked("installer_out_of_business") ? "Yes" : "No"),
+      combined ? noteLine("Same Warranty For Both Loans", yesNo(val("same_warranty_for_both"))) : "",
+      noteLine("Shared Years of Warranty Lost", val("shared_years_warranty_lost")),
+      combined && val("same_warranty_for_both") === "no"
+        ? noteLine("Loan 1 Years of Warranty Lost", val("loan1_years_warranty_lost"))
+        : "",
+      combined && val("same_warranty_for_both") === "no"
+        ? noteLine("Loan 2 Years of Warranty Lost", val("loan2_years_warranty_lost"))
+        : "",
+      noteLine("Out-of-Pocket Costs Related to Solar", val("oop_costs"))
+    ]);
+
+    const installationIssuesSection = noteSection("INSTALLATION ISSUES", [
+      selectedInstallationIssues.length > 0
+        ? `Selected Installation Issues:\n- ${selectedInstallationIssues.join("\n- ")}`
+        : "",
+      noteLine("Number of Missing Panels", val("missing_panels_count"))
+    ]);
+
+        const thsaAnswer = val("thsa_not_applicable");
+
+        let thsaSection = "";
+
+       if (thsaAnswer === "yes") {
+          thsaSection = noteSection("HOME SOLICITATION ACT", [
+            noteLine("HSA Applicable", "No"),
+            noteLine("Reason", "Sales presentation done over phone, Zoom, or at seller's business location"),
+            noteLine("Everbright Welcome Call Within 5 Days", yesNo(val("everbright_welcome_call_within_5_days")))
+          ]);
+        } else if (thsaAnswer === "no") {
+          thsaSection = noteSection("HOME SOLICITATION ACT", [
+            noteLine("HSA Applicable", "Yes"),
+            noteLine("Verbally Informed of 3 Day Right to Cancel", yesNo(val("verbal_cancel_notice"))),
+            noteLine("Seller Notice of Cancellation Form", val("seller_notice_cancel")),
+            noteLine("Lender Notice of Cancellation Form", val("lender_notice_cancel")),
+            noteLine("Everbright Welcome Call Within 5 Days", yesNo(val("everbright_welcome_call_within_5_days")))
+          ]);
+        }
+
+    const clientObservationsSection = noteSection("CLIENT OBSERVATIONS", [
+      noteLine("Cognitive Decline or Terminal", yesNo(val("cognitive_decline_terminal"))),
+      noteLine("Thinking About Moving / Selling Home", yesNo(val("moving_selling_home"))),
+      val("moving_selling_home") === "yes" ? noteLine("Move / Sell Explanation", val("moving_explain")) : ""
+    ]);
+
+    const additionalNotesSection = noteSection("ADDITIONAL NOTES", [
+      noteLine("Special Approval Given / Why", val("special_approval_notes")),
+      noteLine("Special Approval / Obstacles / Info Needed / Next Steps / Follow Ups", val("followup_notes")),
+      noteLine("Payment Plan Details", val("payment_plan_details")),
+      noteLine("Information Needed", val("information_needed"))
+    ]);
+
+    const calculatedValuesSection = noteSection("CALCULATED VALUES", [
+      noteLine("Loan 1 Dealer Fee Damage", el("loan1_prevDealerFee") ? el("loan1_prevDealerFee").textContent : ""),
+      noteLine("Loan 1 Mosaic Interest Damage", el("loan1_prevMosaicDamage") ? el("loan1_prevMosaicDamage").textContent : ""),
+      noteLine("Loan 1 Warranty Damage", el("loan1_prevWarrantyDamage") ? el("loan1_prevWarrantyDamage").textContent : ""),
+      noteLine("Loan 1 Subtotal", el("loan1_prevSubtotal") ? el("loan1_prevSubtotal").textContent : ""),
+      combined ? noteLine("Loan 2 Dealer Fee Damage", el("loan2_prevDealerFee") ? el("loan2_prevDealerFee").textContent : "") : "",
+      combined ? noteLine("Loan 2 Mosaic Interest Damage", el("loan2_prevMosaicDamage") ? el("loan2_prevMosaicDamage").textContent : "") : "",
+      combined ? noteLine("Loan 2 Warranty Damage", el("loan2_prevWarrantyDamage") ? el("loan2_prevWarrantyDamage").textContent : "") : "",
+      combined ? noteLine("Loan 2 Subtotal", el("loan2_prevSubtotal") ? el("loan2_prevSubtotal").textContent : "") : "",
+      noteLine("Energy Savings Calculation Result", el("prevEnergyDamage") ? el("prevEnergyDamage").textContent : ""),
+      noteLine("Energy Damage Applied to Total", money(calculateSharedEnergyDamage().amount)),
+      noteLine("Out-of-Pocket Damage", el("prevOOPDamage") ? el("prevOOPDamage").textContent : ""),
+      noteLine("Install / Manufacturer Damage", el("prevInstallDamage") ? el("prevInstallDamage").textContent : ""),
+      noteLine("Total Estimated Loan Reduction", el("prevTotalDamage") ? el("prevTotalDamage").textContent : ""),
+      noteLine("Rescission Likely", el("prevRescission") ? el("prevRescission").textContent : ""),
+      noteLine("Case Strength", el("prevStrength") ? el("prevStrength").textContent : "")
+    ]);
+
+    const explainerSection = noteSection("CALCULATOR EXPLAINERS", [
+      noteLine("Dealer Fee Explainer", el("detailDealer") ? el("detailDealer").textContent : ""),
+      noteLine("Mosaic Explainer", el("detailMosaic") ? el("detailMosaic").textContent : ""),
+      noteLine("Energy Explainer", el("detailEnergy") ? el("detailEnergy").textContent : ""),
+      noteLine("Warranty Explainer", el("detailWarranty") ? el("detailWarranty").textContent : ""),
+      noteLine("Out-of-Pocket Explainer", el("detailOOP") ? el("detailOOP").textContent : ""),
+      noteLine("Installation Explainer", el("detailInstall") ? el("detailInstall").textContent : ""),
+      noteLine("Total Explainer", el("detailTotal") ? el("detailTotal").textContent : ""),
+      noteLine("Strength Explainer", el("detailStrength") ? el("detailStrength").textContent : "")
+    ]);
+
+    const consultWrapUpSection = noteSection("CONSULT WRAP UP", [
+      noteLine("Consult Completed", yesNo(val("consult_completed"))),
+      noteLine("Send Recap Email", formatRecapEmailValue(val("send_recap_email")))
+    ]);
+    
+    const purchaseDecisionSection = noteSection("PURCHASE DECISION", [
+      noteLine(
+        "Knowing What You Know Now, Would You Purchase the System Again",
+        yesNo(val("purchase_system_again"))
+      ),
+      val("purchase_system_again") === "yes"
+        ? noteLine("Case Qualification", "DO NOT TAKE THIS CASE")
+        : ""
+    ]);
+
+    return [
+      "CASE ASSESSMENT TOOL NOTE",
+      identifyingInfo,
+      systemPropertyInfo,
+      contractInstallerInfo,
+      loanStructureInfo,
+      loan1Section,
+      loan2Section,
+      sharedLoanNotesSection,
+      electricSavingsSection,
+      physicalInstallationSection,
+      warrantyOutOfPocketSection,
+      installationIssuesSection,
+      thsaSection,
+      purchaseDecisionSection,
+      clientObservationsSection,
+      additionalNotesSection,
+      calculatedValuesSection,
+      explainerSection,
+      consultWrapUpSection
+    ].filter(noteHasValue).join("\n\n");
+  }
+  
+  function buildDealPitchUrl() {
+    const base = "https://consult.prevostlawfirm.com/widget/form/uSQC8jsBjM8RrbYf9jg2";
+
+    const params = new URLSearchParams({
+      email: val("email"),
+      first_name: val("first_name"),
+      last_name: val("last_name"),
+      phone: val("phone"),
+
+      solar_system_address_1: val("system1_address"),
+      solar_system_city_1: val("system1_city"),
+      solar_system_state_1: val("system1_state"),
+      solar_system_zip_1: val("system1_zip"),
+
+      solar_system_address_2: val("system2_address"),
+      solar_system_city_2: val("system2_city"),
+      solar_system_state_2: val("system2_state"),
+      solar_system_zip_2: val("system2_zip"),
+
+      "joint_filer_-_first_name": val("joint_first_name"),
+      "joint_filer_-_last_name": val("joint_last_name"),
+      "joint_filer_-_email_address": val("joint_email"),
+
+      payment_plan: " "
+    });
+
+    return `${base}?${params.toString()}`;
+  }
+
+  function buildPayload() {
+    return {
+      contact_id: val("contact_id"),
+      case_assessment_link: val("case_assessment_link"),
+      first_name: val("first_name"),
+      last_name: val("last_name"),
+      phone: val("phone"),
+      email: val("email"),
+
+      joint_filer: val("joint_filer"),
+      joint_first_name: val("joint_first_name"),
+      joint_last_name: val("joint_last_name"),
+      joint_email: val("joint_email"),
+      joint_phone: val("joint_phone"),
+      joint_relationship: val("joint_relationship"),
+
+      more_than_one_system: val("more_than_one_system"),
+      system_count: val("system_count"),
+      systems_interconnected: val("systems_interconnected"),
+      production_reports_each: val("production_reports_each"),
+      solar_personal_use: val("solar_personal_use"),
+      tx_homestead_at_signing: val("tx_homestead_at_signing"),
+      system1_address: val("system1_address"),
+      system1_city: val("system1_city"),
+      system1_state: val("system1_state"),
+      system1_zip: val("system1_zip"),
+      system2_address: val("system2_address"),
+      system2_city: val("system2_city"),
+      system2_state: val("system2_state"),
+      system2_zip: val("system2_zip"),
+
+      has_contracts: val("has_contracts"),
+      installer_in_business: val("installer_in_business"),
+      contact_attempts_60_days: val("contact_attempts_60_days"),
+      installer_qualifies_text: val("installer_qualifies_text"),
+
+      two_loan_case: val("two_loan_case"),
+      same_address: val("same_address"),
+      same_lender: val("same_lender"),
+      combined_two_loan_case: isCombinedTwoLoanCase() ? "yes" : "no",
+      separate_forms_required: shouldUseTwoForms() ? "yes" : "no",
+
+      loan1_installer: val("loan1_installer"),
+      loan1_lender_type: val("loan1_lender_type"),
+      loan1_other_lender: val("loan1_other_lender"),
+      loan1_lender_name: lenderName("loan1"),
+      loan1_amount: val("loan1_amount"),
+      loan1_interest_rate: val("loan1_interest_rate"),
+      loan1_term: val("loan1_term"),
+      loan1_payment: val("loan1_payment"),
+      loan1_dealer_fee_disclosed: val("loan1_dealer_fee_disclosed"),
+      loan1_choice_of_lender: val("loan1_choice_of_lender"),
+      loan1_warranty_length: val("loan1_warranty_length"),
+
+      loan2_installer: val("loan2_installer"),
+      loan2_lender_type: val("loan2_lender_type"),
+      loan2_other_lender: val("loan2_other_lender"),
+      loan2_lender_name: lenderName("loan2"),
+      loan2_amount: val("loan2_amount"),
+      loan2_interest_rate: val("loan2_interest_rate"),
+      loan2_term: val("loan2_term"),
+      loan2_payment: val("loan2_payment"),
+      loan2_dealer_fee_disclosed: val("loan2_dealer_fee_disclosed"),
+      loan2_choice_of_lender: val("loan2_choice_of_lender"),
+      loan2_warranty_length: val("loan2_warranty_length"),
+
+      shared_non_solar_costs: val("shared_non_solar_costs"),
+      shared_inclusions_notes: val("shared_inclusions_notes"),
+      initial_solar_monthly_payment: val("initial_solar_monthly_payment"),
+      production_promised: val("production_promised"),
+      tax_promises: val("tax_promises"),
+      tax_credit_received: val("tax_credit_received"),
+      applied_toward_loan: val("applied_toward_loan"),
+
+      promised_savings_received: val("promised_savings_received"),
+      paying_more_now: val("paying_more_now"),
+      savings_calc_method: val("savings_calc_method"),
+      electric_statements_available: val("electric_statements_available"),
+      electric_promises_text: val("electric_promises_text"),
+      pre_solar_bill: val("pre_solar_bill"),
+      post_solar_bill: val("post_solar_bill"),
+      savings_value_type: val("savings_value_type"),
+      percent_of_bill: val("percent_of_bill"),
+      promised_bill_amount: val("promised_bill_amount"),
+      solar_percent_of_bill: val("solar_percent_of_bill"),
+      avg_usage_kwh: val("avg_usage_kwh"),
+      price_per_kwh: val("price_per_kwh"),
+      avg_solar_produced_kwh: val("avg_solar_produced_kwh"),
+      estimated_annual_production_kwh: val("estimated_annual_production_kwh"),
+
+      panels_in_shade: val("panels_in_shade"),
+      inverter_box_outside: val("inverter_box_outside"),
+      property_damage: val("property_damage"),
+      property_damage_description: val("property_damage_description"),
+      property_damage_repairs: val("property_damage_repairs"),
+
+      installer_out_of_business: checked("installer_out_of_business") ? "yes" : "no",
+      same_warranty_for_both: val("same_warranty_for_both"),
+      shared_years_warranty_lost: val("shared_years_warranty_lost"),
+      loan1_years_warranty_lost: val("loan1_years_warranty_lost"),
+      loan2_years_warranty_lost: val("loan2_years_warranty_lost"),
+      oop_costs: val("oop_costs"),
+
+      issue_inverter_sun: checked("issue_inverter_sun") ? "yes" : "no",
+      issue_never_completed: checked("issue_never_completed") ? "yes" : "no",
+      issue_no_buyback: checked("issue_no_buyback") ? "yes" : "no",
+      issue_missing_battery: checked("issue_missing_battery") ? "yes" : "no",
+      issue_battery_not_activated: checked("issue_battery_not_activated") ? "yes" : "no",
+      issue_wrong_panels: checked("issue_wrong_panels") ? "yes" : "no",
+      issue_missing_surge: checked("issue_missing_surge") ? "yes" : "no",
+      issue_unsafe_wiring: checked("issue_unsafe_wiring") ? "yes" : "no",
+      missing_panels_count: val("missing_panels_count"),
+      
+      thsa_not_applicable: val("thsa_not_applicable"),
+      purchase_system_again: val("purchase_system_again"),
+      verbal_cancel_notice: val("verbal_cancel_notice"),
+      seller_notice_cancel: val("seller_notice_cancel"),
+      lender_notice_cancel: val("lender_notice_cancel"),
+      everbright_welcome_call_within_5_days: val("everbright_welcome_call_within_5_days"),
+
+      cognitive_decline_terminal: val("cognitive_decline_terminal"),
+      moving_selling_home: val("moving_selling_home"),
+      moving_explain: val("moving_explain"),
+
+      special_approval_notes: val("special_approval_notes"),
+      followup_notes: val("followup_notes"),
+      payment_plan_details: val("payment_plan_details"),
+
+      consult_completed: val("consult_completed"),
+      information_needed: val("information_needed"),
+      send_recap_email: val("send_recap_email"),
+
+      calc_loan1_dealer_fee_damage: el("loan1_prevDealerFee") ? el("loan1_prevDealerFee").textContent : "$0",
+      calc_loan1_mosaic_interest_damage: el("loan1_prevMosaicDamage") ? el("loan1_prevMosaicDamage").textContent : "$0",
+      calc_loan1_warranty_damage: el("loan1_prevWarrantyDamage") ? el("loan1_prevWarrantyDamage").textContent : "$0",
+      calc_loan1_subtotal: el("loan1_prevSubtotal") ? el("loan1_prevSubtotal").textContent : "$0",
+
+      calc_loan2_dealer_fee_damage: el("loan2_prevDealerFee") ? el("loan2_prevDealerFee").textContent : "$0",
+      calc_loan2_mosaic_interest_damage: el("loan2_prevMosaicDamage") ? el("loan2_prevMosaicDamage").textContent : "$0",
+      calc_loan2_warranty_damage: el("loan2_prevWarrantyDamage") ? el("loan2_prevWarrantyDamage").textContent : "$0",
+      calc_loan2_subtotal: el("loan2_prevSubtotal") ? el("loan2_prevSubtotal").textContent : "$0",
+
+      calc_energy_damage: money(calculateSharedEnergyDamage().amount),
+      calc_oop_damage: el("prevOOPDamage") ? el("prevOOPDamage").textContent : "$0",
+      calc_install_damage: el("prevInstallDamage") ? el("prevInstallDamage").textContent : "$0",
+      calc_total_damage: el("prevTotalDamage") ? el("prevTotalDamage").textContent : "$0",
+      calc_rescission: el("prevRescission") ? el("prevRescission").textContent : "No",
+      calc_case_strength: el("prevStrength") ? el("prevStrength").textContent : "Not Strong Enough",
+      
+      generated_note: buildCaseAssessmentNote(),
+      explainer_dealer: el("detailDealer") ? el("detailDealer").textContent : "",
+      explainer_mosaic: el("detailMosaic") ? el("detailMosaic").textContent : "",
+      explainer_energy: el("detailEnergy") ? el("detailEnergy").textContent : "",
+      explainer_warranty: el("detailWarranty") ? el("detailWarranty").textContent : "",
+      explainer_oop: el("detailOOP") ? el("detailOOP").textContent : "",
+      explainer_install: el("detailInstall") ? el("detailInstall").textContent : "",
+      explainer_total: el("detailTotal") ? el("detailTotal").textContent : "",
+      explainer_strength: el("detailStrength") ? el("detailStrength").textContent : ""
+    };
+  }
+
+  function validateBeforeSubmit() {
+    if (!val("first_name") || !val("last_name") || !val("phone")) {
+      el("catv2_status").textContent = "Please complete first name, last name, and phone.";
+      return false;
+    }
+
+    if (!val("loan1_amount") || !val("loan1_interest_rate") || !val("loan1_term")) {
+      el("catv2_status").textContent = "Please complete the main Loan 1 calculator fields.";
+      return false;
+    }
+
+    if (isCombinedTwoLoanCase()) {
+      if (!val("loan2_amount") || !val("loan2_interest_rate") || !val("loan2_term")) {
+        el("catv2_status").textContent = "Please complete the Loan 2 calculator fields for combined two-loan cases.";
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function attachListeners() {
+    const allInputs = document.querySelectorAll("#catv2-app input, #catv2-app select, #catv2-app textarea");
+    allInputs.forEach(node => {
+      const evt = node.tagName.toLowerCase() === "select" || node.type === "checkbox" ? "change" : "input";
+      node.addEventListener(evt, function () {
+        setupConditionalLogic();
+        updateSummary();
+      });
+    });
+
+    const submitBtn = el("catv2_submit_btn");
+    if (submitBtn) {
+      submitBtn.addEventListener("click", function () {
+        setupConditionalLogic();
+        updateSummary();
+
+        if (!validateBeforeSubmit()) return;
+
+        if (alreadySubmitted) {
+          const confirmed = window.confirm(
+            'This form has already been submitted once.\n\n' +
+            'Are you sure you want to submit it again?\n\n' +
+            'Before resubmitting, check "Send Recap Email" field and set it appropriately so the client does not receive a duplicate recap email.\n\n' +
+            'If this new submission replaces the earlier one, remember to delete the unneeded note from the client’s account.'
+          );
+
+          if (!confirmed) {
+            return;
+          }
+        }
+
+        el("catv2_status").textContent = "Submitting...";
+
+        fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(buildPayload())
+        })
+        .then(() => {
+          alreadySubmitted = true;
+          el("catv2_status").textContent = "Submitted successfully! You may update the form and resubmit if needed.";
+        })
+        .catch(() => {
+          el("catv2_status").textContent = "Error submitting form.";
+        });
+      });
+    }
+    
+    const continueBtn = el("catv2_submit_and_continue");
+    if (continueBtn) {
+      continueBtn.addEventListener("click", function () {
+        setupConditionalLogic();
+        updateSummary();
+
+        if (!validateBeforeSubmit()) return;
+
+        if (alreadySubmitted) {
+          const confirmed = window.confirm(
+            'This form has already been submitted once.\n\n' +
+            'Are you sure you want to submit it again and continue to the Deal Pitch form?\n\n' +
+            'Before resubmitting, review the "Send Recap Email" field so the client does not receive a duplicate recap email.\n\n' +
+            'If this new submission replaces the earlier one, remember to delete the unneeded note from the client’s account.'
+          );
+
+          if (!confirmed) {
+            return;
+          }
+        }
+
+        el("catv2_status").textContent = "Submitting...";
+
+        fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(buildPayload())
+        })
+        .then(() => {
+          alreadySubmitted = true;
+          window.location.href = buildDealPitchUrl();
+        })
+        .catch(() => {
+          el("catv2_status").textContent = "Error submitting form.";
+        });
+      });
+    }
+  }
+
+  function init() {
+    prefillFromUrl();
+    setupConditionalLogic();
+    updateSummary();
+    attachListeners();
+  }
+
+  let tries = 0;
+  const maxTries = 40;
+  const poller = setInterval(() => {
+    tries++;
+    if (el("catv2-app") && el("solarCalcPreview") && el("catv2_submit_btn")) {
+      clearInterval(poller);
+      init();
+    }
+    if (tries >= maxTries) {
+      clearInterval(poller);
+    }
+  }, 250);
+})();
+</script>

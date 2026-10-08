@@ -7,7 +7,7 @@ Source of record for the Case Assessment form's custom code. This repo only stor
 | File | Where it goes in the form builder |
 |---|---|
 | `src/custom-code-element.html` | Custom code element (form markup + live calculator panel) |
-| `src/footer-tracking-code.html` | Footer tracking code (conditional logic, damage calculator, URL prefill, Pabbly webhook submit). Not added yet. |
+| `src/footer-tracking-code.html` | Footer tracking code (conditional logic, damage calculator, URL prefill, Pabbly webhook submit) |
 
 ## Notes
 
