@@ -1,0 +1,918 @@
+<div id="catv2-app">
+  <div class="catv2-layout">
+
+    <!-- LEFT: FORM -->
+    <div class="catv2-main">
+
+      <div class="catv2-header card">
+        <h1>Case Assessment Tool</h1>
+        <p class="subtext">Custom intake + calculator rebuild</p>
+      </div>
+
+      <!-- Hidden metadata / prefill support -->
+      <input type="hidden" id="contact_id" />
+      <input type="hidden" id="case_assessment_link" />
+
+      <!-- CLIENT INFO -->
+      <section class="card">
+        <h2>Client Information</h2>
+
+        <div class="grid-2">
+          <div>
+            <label>First Name</label>
+            <input type="text" id="first_name" />
+          </div>
+          <div>
+            <label>Last Name</label>
+            <input type="text" id="last_name" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Phone</label>
+            <input type="text" id="phone" />
+          </div>
+          <div>
+            <label>Email</label>
+            <input type="email" id="email" />
+          </div>
+        </div>
+      </section>
+
+      <!-- CLIENT OBSERVATIONS -->
+      <section class="card">
+        <h2>Client Observations</h2>
+
+        <div class="grid-2">
+          <div>
+            <label>Cognitive decline or terminal?</label>
+            <select id="cognitive_decline_terminal">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="unsure">Unsure</option>
+            </select>
+          </div>
+          <div>
+            <label>Thinking about moving/selling home?</label>
+            <select id="moving_selling_home">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="moving_explain_section" class="hidden-section">
+          <label>If yes, please explain:</label>
+          <textarea id="moving_explain"></textarea>
+        </div>
+      </section>
+
+      <!-- JOINT FILER -->
+      <section class="card">
+        <h2>Joint Filer</h2>
+
+        <div>
+          <label>Is there a joint filer?</label>
+          <select id="joint_filer">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="joint_filer_section" class="hidden-section">
+          <div class="grid-2">
+            <div>
+              <label>Joint Filer - First Name</label>
+              <input type="text" id="joint_first_name" />
+            </div>
+            <div>
+              <label>Joint Filer - Last Name</label>
+              <input type="text" id="joint_last_name" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label>Joint Filer - Email Address</label>
+              <input type="email" id="joint_email" />
+            </div>
+            <div>
+              <label>Joint Filer - Phone Number</label>
+              <input type="text" id="joint_phone" />
+            </div>
+          </div>
+
+          <div>
+            <label>Relationship to Primary Filer</label>
+            <input type="text" id="joint_relationship" />
+          </div>
+        </div>
+      </section>
+
+      <!-- SOLAR SYSTEM STRUCTURE -->
+      <section class="card">
+        <h2>Solar System Structure</h2>
+
+        <div>
+          <label>Is the solar for personal use and not for business?</label>
+          <select id="solar_personal_use">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="solar_business_warning" class="warning-box hidden-section" style="background:#fee2e2; border-color:#ef4444; color:#991b1b; font-weight:700; font-size:18px;">
+          We cannot take this case. These cases are for personal residences only.
+        </div>
+
+        <div>
+          <label>For TX PNCs: Was this your homestead at the time of signing the contract?</label>
+          <select id="tx_homestead_at_signing">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Do they have more than one solar system?</label>
+          <select id="more_than_one_system">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="multi_system_section" class="hidden-section">
+          <div class="grid-2">
+            <div>
+              <label>How many systems?</label>
+              <input type="number" id="system_count" min="1" />
+            </div>
+            <div>
+              <label>Are they interconnected?</label>
+              <select id="systems_interconnected">
+                <option value="">Select</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label>Can they pull production reports for each?</label>
+            <select id="production_reports_each">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="system1_section" class="hidden-section system-addresses">
+          <h3>Solar System 1</h3>
+          <div class="grid-2">
+            <div>
+              <label>Solar System Address 1</label>
+              <input type="text" id="system1_address" />
+            </div>
+            <div>
+              <label>Solar System City 1</label>
+              <input type="text" id="system1_city" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <label>Solar System State 1</label>
+              <input type="text" id="system1_state" />
+            </div>
+            <div>
+              <label>Solar System Zip 1</label>
+              <input type="text" id="system1_zip" />
+            </div>
+          </div>
+        </div>
+
+        <div id="system2_section" class="hidden-section system-addresses">
+          <h3>Solar System 2</h3>
+          <div class="grid-2">
+            <div>
+              <label>Solar System Address 2</label>
+              <input type="text" id="system2_address" />
+            </div>
+            <div>
+              <label>Solar System City 2</label>
+              <input type="text" id="system2_city" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <label>Solar System State 2</label>
+              <input type="text" id="system2_state" />
+            </div>
+            <div>
+              <label>Solar System Zip 2</label>
+              <input type="text" id="system2_zip" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOAN STRUCTURE -->
+      <section class="card">
+        <h2>Loan Structure</h2>
+
+        <div>
+          <label>Is this a two-loan case on the same home?</label>
+          <select id="two_loan_case">
+            <option value="">Select</option>
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+
+        <div id="two_loan_questions" class="hidden-section">
+          <div class="grid-2">
+            <div>
+              <label>Are both loans tied to the same address?</label>
+              <select id="same_address">
+                <option value="">Select</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div>
+              <label>Are both loans with the same lender?</label>
+              <select id="same_lender">
+                <option value="">Select</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="two_form_warning" class="warning-box hidden-section">
+          This setup should be submitted as two separate case assessment forms because the loans are either on different addresses or with different lenders.
+        </div>
+
+        <div id="combined_two_loan_notice" class="info-box hidden-section">
+          This case can be handled in one form. Loan-based damages will be calculated separately for Loan 1 and Loan 2, then combined in the calculator summary.
+        </div>
+      </section>
+
+      <!-- LOAN 1 -->
+      <section class="card">
+        <h2>Loan 1</h2>
+
+        <div>
+          <label>Solar Installer</label>
+          <input type="text" id="loan1_installer" />
+        </div>
+
+        <div>
+          <label>Solar Loan Lender</label>
+          <select id="loan1_lender_type">
+            <option value="">Select</option>
+            <option value="mosaic">Mosaic</option>
+            <option value="everbright">Everbright</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div id="loan1_other_lender_section" class="hidden-section">
+          <label>Lender (if not Mosaic)</label>
+          <input type="text" id="loan1_other_lender" />
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Loan Amount</label>
+            <input type="number" id="loan1_amount" step="0.01" />
+          </div>
+          <div>
+            <label>Interest Rate</label>
+            <input type="number" id="loan1_interest_rate" step="0.01" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Loan Term (In Years)</label>
+            <input type="number" id="loan1_term" step="1" />
+          </div>
+          <div>
+            <label>Loan Payment</label>
+            <input type="number" id="loan1_payment" step="0.01" />
+          </div>
+        </div>
+
+        <div>
+          <label>Was the Dealer Fee Disclosed?</label>
+          <select id="loan1_dealer_fee_disclosed">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Choice of Lender?</label>
+            <select id="loan1_choice_of_lender">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="dont_recall">Don't Recall</option>
+            </select>
+          </div>
+          <div>
+            <label>Warranty Length</label>
+            <input type="text" id="loan1_warranty_length" />
+          </div>
+        </div>
+      </section>
+
+      <!-- LOAN 2 -->
+      <section id="loan2_section" class="card hidden-section">
+        <h2>Loan 2</h2>
+
+        <div>
+          <label>Solar Installer</label>
+          <input type="text" id="loan2_installer" />
+        </div>
+
+        <div>
+          <label>Solar Loan Lender</label>
+          <select id="loan2_lender_type">
+            <option value="">Select</option>
+            <option value="mosaic">Mosaic</option>
+            <option value="everbright">Everbright</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div id="loan2_other_lender_section" class="hidden-section">
+          <label>Lender (if not Mosaic)</label>
+          <input type="text" id="loan2_other_lender" />
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Loan Amount</label>
+            <input type="number" id="loan2_amount" step="0.01" />
+          </div>
+          <div>
+            <label>Interest Rate</label>
+            <input type="number" id="loan2_interest_rate" step="0.01" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Loan Term (In Years)</label>
+            <input type="number" id="loan2_term" step="1" />
+          </div>
+          <div>
+            <label>Loan Payment</label>
+            <input type="number" id="loan2_payment" step="0.01" />
+          </div>
+        </div>
+
+        <div>
+          <label>Was the Dealer Fee Disclosed?</label>
+          <select id="loan2_dealer_fee_disclosed">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Choice of Lender?</label>
+            <select id="loan2_choice_of_lender">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="dont_recall">Don't Recall</option>
+            </select>
+          </div>
+          <div>
+            <label>Warranty Length</label>
+            <input type="text" id="loan2_warranty_length" />
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTRACT / INSTALLER -->
+      <section class="card">
+        <h2>Installer & Contract Follow-Up</h2>
+
+        <div>
+          <label>Do they have their installer and lender contracts?</label>
+          <select id="has_contracts">
+            <option value="">Select</option>
+            <option value="both">Both</option>
+            <option value="installer_only">Installer Only</option>
+            <option value="lender_only">Lender Only</option>
+            <option value="neither">Neither</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Is the installer in business?</label>
+          <select id="installer_in_business">
+            <option value="">Select</option>
+            <option value="in_business">In Business</option>
+            <option value="out_of_business">Out of Business</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+
+        <div id="contact_attempts_section" class="hidden-section">
+          <label>Do they have 60 days of documented contact attempts with the installer?</label>
+          <select id="contact_attempts_60_days">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="installer_qualifies_section" class="hidden-section">
+          <label>If In Business, what qualifies them?</label>
+          <textarea id="installer_qualifies_text"></textarea>
+        </div>
+      </section>
+
+      <!-- SHARED LOAN / CASE NOTES -->
+      <section class="card">
+        <h2>Shared Loan Notes</h2>
+
+        <div>
+          <label>Costs Not Associated With Solar Purchase (ie. roof, ac)</label>
+          <input type="number" id="shared_non_solar_costs" step="0.01" />
+        </div>
+
+        <div>
+          <label>Additional Inclusions Notes (AC, pool, etc.)</label>
+          <textarea id="shared_inclusions_notes"></textarea>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Initial Solar Monthly Payment</label>
+            <input type="text" id="initial_solar_monthly_payment" />
+          </div>
+          <div>
+            <label>Are you getting the production promised?</label>
+            <select id="production_promised">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="unsure">Unsure</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>What tax promises were made?</label>
+            <input type="text" id="tax_promises" />
+          </div>
+          <div>
+            <label>Tax credit received?</label>
+            <select id="tax_credit_received">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="unsure">Unsure</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Did you apply toward loan?</label>
+          <select id="applied_toward_loan">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- ELECTRIC BILLS & PROMISED SAVINGS -->
+      <section class="card">
+        <h2>Electric Bills & Promised Savings</h2>
+
+        <div>
+          <label>Are you getting what you were promised for electric savings?</label>
+          <select id="promised_savings_received">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Are you paying more now with electric + loan payment?</label>
+          <select id="paying_more_now">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div>
+          <label>How would you like to calculate promised savings?</label>
+          <select id="savings_calc_method">
+            <option value="simple_production">Simple Production Math</option>
+          </select>
+        </div>
+
+        <div id="electric_statements_section" class="hidden-section">
+          <label>Can you provide 12–18 months of electric statements since panels?</label>
+          <select id="electric_statements_available">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div>
+          <label>What Electric Savings Promises were made?</label>
+          <input type="text" id="electric_promises_text" />
+        </div>
+
+        <div id="avg_pre_post_section" class="hidden-section">
+          <div class="grid-2">
+            <div>
+              <label>Pre-Solar Electric Bill</label>
+              <input type="number" id="pre_solar_bill" step="0.01" />
+            </div>
+            <div>
+              <label>Post-Solar Electric Bill</label>
+              <input type="number" id="post_solar_bill" step="0.01" />
+            </div>
+          </div>
+
+          <div>
+            <label>Percentage of Savings or Exact dollar amount?</label>
+            <select id="savings_value_type">
+              <option value="">Select</option>
+              <option value="percent">Percent of bill (%)</option>
+              <option value="dollar">Dollar Amount ($)</option>
+            </select>
+          </div>
+
+          <div id="percent_bill_section" class="hidden-section">
+            <label>Percent of Bill (%)</label>
+            <input type="number" id="percent_of_bill" step="0.01" />
+          </div>
+
+          <div id="promised_bill_section" class="hidden-section">
+            <label>Promised Bill Amount ($)</label>
+            <input type="number" id="promised_bill_amount" step="0.01" />
+          </div>
+        </div>
+
+        <div id="solar_vs_usage_section" class="hidden-section">
+          <div class="grid-3">
+            <div>
+              <label>Percent of Bill (%)</label>
+              <input type="number" id="solar_percent_of_bill" step="0.01" />
+            </div>
+            <div>
+              <label>Avg Electricity Usage (kWh)</label>
+              <input type="number" id="avg_usage_kwh" step="0.01" />
+            </div>
+            <div>
+              <label>Price per kWh</label>
+              <input type="number" id="price_per_kwh" step="0.01" />
+            </div>
+          </div>
+
+          <div>
+            <label>Avg Solar Produced (kWh)</label>
+            <input type="number" id="avg_solar_produced_kwh" step="0.01" />
+          </div>
+        </div>
+
+        <div id="simple_production_section" class="hidden-section">
+          <div>
+            <label>System Estimated Production (kWh per year)</label>
+            <input type="number" id="estimated_annual_production_kwh" step="0.01" />
+          </div>
+        </div>
+      </section>
+
+      <!-- PHYSICAL & INSTALLATION -->
+      <section class="card">
+        <h2>Physical & Installation Observations</h2>
+
+        <div class="grid-2">
+          <div>
+            <label>Panels covered in shade?</label>
+            <select id="panels_in_shade">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div>
+            <label>Inverter box outside?</label>
+            <select id="inverter_box_outside">
+              <option value="">Select</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Property damage?</label>
+          <select id="property_damage">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="property_damage_section" class="hidden-section">
+          <div>
+            <label>Describe property damage</label>
+            <textarea id="property_damage_description"></textarea>
+          </div>
+          <div>
+            <label>Have repairs been done? If not, why?</label>
+            <textarea id="property_damage_repairs"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- WARRANTY & OUT OF POCKET -->
+      <section class="card">
+        <h2>Warranty & Out-of-Pocket</h2>
+
+        <div>
+          <label>Installer Out of Business or Not Honoring Warranty</label>
+          <input type="checkbox" id="installer_out_of_business" />
+        </div>
+
+        <div id="same_warranty_question" class="hidden-section">
+          <label>Is the warranty situation the same for both loans?</label>
+          <select id="same_warranty_for_both">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="shared_warranty_section">
+          <label>Years of Warranty Lost</label>
+          <input type="number" id="shared_years_warranty_lost" step="1" />
+        </div>
+
+        <div id="loan_warranty_section" class="hidden-section">
+          <div class="grid-2">
+            <div>
+              <label>Loan 1 - Years of Warranty Lost</label>
+              <input type="number" id="loan1_years_warranty_lost" step="1" />
+            </div>
+            <div>
+              <label>Loan 2 - Years of Warranty Lost</label>
+              <input type="number" id="loan2_years_warranty_lost" step="1" />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label>Out-of-Pocket Costs Related to Solar</label>
+          <input type="number" id="oop_costs" step="0.01" />
+        </div>
+      </section>
+
+      <!-- INSTALLATION ISSUES -->
+      <section class="card">
+        <h2>Installation Issues</h2>
+
+        <div class="checkbox-grid">
+          <label><input type="checkbox" id="issue_inverter_sun" /> Inverter Installed in Direct Sun</label>
+          <label><input type="checkbox" id="issue_never_completed" /> System Never Installed/Completed</label>
+          <label><input type="checkbox" id="issue_no_buyback" /> No Solar Buyback Plan Available</label>
+          <label><input type="checkbox" id="issue_missing_battery" /> Battery / Powerwall Missing</label>
+          <label><input type="checkbox" id="issue_battery_not_activated" /> Battery Installed but Not Activated</label>
+          <label><input type="checkbox" id="issue_wrong_panels" /> Wrong Wattage Panels Installed</label>
+          <label><input type="checkbox" id="issue_missing_surge" /> Missing System Surge Protector</label>
+          <label><input type="checkbox" id="issue_unsafe_wiring" /> Unsafe Wiring or Code Violation</label>
+          <label>Number of Missing Panels (If Any)
+            <input type="number" id="missing_panels_count" step="1" min="0" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>HSA Applicability</h2>
+
+        <div>
+          <label>Was the sales presentation done over phone, Zoom, or at the seller’s business location?</label>
+          <select id="thsa_not_applicable">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="thsa_not_applicable_notice" class="info-box hidden-section">
+          Texas Home Solicitation Act claims do not apply for this case based on how the sales presentation was conducted. Home Solicitation Act claim fields have been deactivated.
+        </div>
+      </section>
+
+      <!-- HOME SOLICITATION ACT -->
+      <section class="card" id="home_solicitation_section">
+        <h2>Home Solicitation Act</h2>
+
+        <div id="everbright_welcome_call_section" class="hidden-section">
+          <label>Was your Everbright Welcome call within 5 days of signing the contract?</label>
+          <select id="everbright_welcome_call_within_5_days">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Verbally informed of 3 day right to cancel at time of signing?</label>
+          <select id="verbal_cancel_notice">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Seller Notice of Cancellation Form</label>
+            <select id="seller_notice_cancel">
+              <option value="">Select</option>
+              <option value="no_claim">No Claim</option>
+              <option value="missing_form">Missing Form</option>
+              <option value="blank_form">Form Present but blank</option>
+              <option value="missing_1_of_4">Form Missing 1 of 4 elements</option>
+            </select>
+          </div>
+          <div>
+            <label>Lender Notice of Cancellation Form</label>
+            <select id="lender_notice_cancel">
+              <option value="">Select</option>
+              <option value="no_claim">No Claim</option>
+              <option value="missing_form">Missing Form</option>
+              <option value="blank_form">Form Present but blank</option>
+              <option value="missing_1_of_4">Form Missing 1 of 4 elements</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- PURCHASE DECISION -->
+      <section class="card">
+        <h2>Purchase Decision</h2>
+
+        <div>
+          <label>Knowing what you know now, would you purchase the system again?</label>
+          <select id="purchase_system_again">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div
+          id="purchase_system_again_warning"
+          class="warning-box hidden-section"
+          style="background:#fee2e2; border-color:#ef4444; color:#991b1b; font-weight:700; font-size:18px;"
+        >
+          DO NOT TAKE THIS CASE.
+        </div>
+      </section>
+
+
+      <!-- ADDITIONAL NOTES -->
+      <section class="card">
+        <h2>Additional Notes</h2>
+
+        <div>
+          <label>Additional Notes - Special Approval Given? Why?</label>
+          <textarea id="special_approval_notes"></textarea>
+        </div>
+
+        <div>
+          <label>Special Approval, Obstacles, Info needed, Next Steps, Follow ups</label>
+          <textarea id="followup_notes"></textarea>
+        </div>
+
+        <div>
+          <label>Payment Plan Details</label>
+          <textarea id="payment_plan_details"></textarea>
+        </div>
+      </section>
+
+      <!-- CONSULT WRAP UP -->
+      <section class="card">
+        <h2>Consult Wrap Up</h2>
+
+        <div>
+          <label>Consult Completed?</label>
+          <select id="consult_completed">
+            <option value="">Select</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div id="information_needed_section" class="hidden-section">
+          <label>Information needed:</label>
+          <textarea id="information_needed"></textarea>
+        </div>
+
+        <div>
+          <label>Send recap email?</label>
+          <select id="send_recap_email">
+            <option value="">Select</option>
+            <option value="no">No</option>
+            <option value="yes_mosaic">Yes - Mosaic</option>
+            <option value="yes_other">Yes - Other</option>
+            <option value="yes_mosaic_spanish">Yes - Mosaic Spanish</option>
+            <option value="yes_other_spanish">Yes - Other Spanish</option>
+            <option value="yes_everbright_tx_thsa">Yes - Everbright TX/THSA</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- SUBMIT -->
+      <section class="card">
+        <button type="button" id="catv2_submit_btn">Submit Case Assessment</button>
+        <button type="button" id="catv2_submit_and_continue">Submit + Continue to Deal Pitch</button>
+        <p id="catv2_status"></p>
+      </section>
+    </div>
+
+    <!-- RIGHT: LIVE CALCULATOR PANEL -->
+    <aside class="catv2-sidebar">
+      <div class="card sticky-panel" id="solarCalcPreview">
+        <h2>Live Case Summary</h2>
+
+        <div class="summary-block">
+          <h3>Loan 1</h3>
+          <p><strong>Dealer Fee Damage:</strong> <span id="loan1_prevDealerFee">$0</span></p>
+          <p><strong>Mosaic Interest Damage:</strong> <span id="loan1_prevMosaicDamage">$0</span></p>
+          <p><strong>Warranty Damage:</strong> <span id="loan1_prevWarrantyDamage">$0</span></p>
+          <p><strong>Loan 1 Subtotal:</strong> <span id="loan1_prevSubtotal">$0</span></p>
+        </div>
+
+        <div class="summary-block hidden-section" id="loan2_summary_block">
+          <h3>Loan 2</h3>
+          <p><strong>Dealer Fee Damage:</strong> <span id="loan2_prevDealerFee">$0</span></p>
+          <p><strong>Mosaic Interest Damage:</strong> <span id="loan2_prevMosaicDamage">$0</span></p>
+          <p><strong>Warranty Damage:</strong> <span id="loan2_prevWarrantyDamage">$0</span></p>
+          <p><strong>Loan 2 Subtotal:</strong> <span id="loan2_prevSubtotal">$0</span></p>
+        </div>
+
+        <div class="summary-block">
+          <h3>Shared / Property-Level Damages</h3>
+          <p><strong>Energy Savings Damage:</strong> <span id="prevEnergyDamage">$0</span></p>
+          <p><strong>Out-of-Pocket Damage:</strong> <span id="prevOOPDamage">$0</span></p>
+          <p><strong>Install / Manufacturer Damage:</strong> <span id="prevInstallDamage">$0</span></p>
+        </div>
+
+        <div class="summary-block total-block">
+          <p><strong>Total Estimated Loan Reduction:</strong> <span id="prevTotalDamage">$0</span></p>
+          <p><strong>Rescission Likely?</strong> <span id="prevRescission">No</span></p>
+          <p><strong>Case Strength:</strong> <span id="prevStrength">Not Strong Enough</span></p>
+        </div>
+
+        <div class="summary-block">
+          <h3>Brief Explainers</h3>
+          <p id="detailDealer">Dealer fee explainer will appear here.</p>
+          <p id="detailMosaic">Mosaic explainer will appear here.</p>
+          <p id="detailEnergy">Energy explainer will appear here.</p>
+          <p id="detailWarranty">Warranty explainer will appear here.</p>
+          <p id="detailOOP">Out-of-pocket explainer will appear here.</p>
+          <p id="detailInstall">Installation explainer will appear here.</p>
+          <p id="detailTotal">Total explainer will appear here.</p>
+          <p id="detailStrength">Strength explainer will appear here.</p>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
