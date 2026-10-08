@@ -1247,6 +1247,11 @@
       }
     }
 
+    if (!val("send_recap_email")) {
+      el("catv2_status").textContent = "Please select whether to send a recap email.";
+      return false;
+    }
+
     return true;
   }
 
