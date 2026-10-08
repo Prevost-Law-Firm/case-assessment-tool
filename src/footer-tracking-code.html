@@ -73,6 +73,10 @@
     return `${label}: ${v}`;
   }
 
+  function boldClaim(text) {
+    return String(text).replace(/(Great|Good|No) savings claim/g, "<strong>$&</strong>");
+  }
+
   function noteSection(title, lines) {
     const filtered = lines.filter(item => noteHasValue(item));
     if (filtered.length === 0) return "";
@@ -981,7 +985,7 @@
       combined ? noteLine("Loan 2 Mosaic Interest Damage", el("loan2_prevMosaicDamage") ? el("loan2_prevMosaicDamage").textContent : "") : "",
       combined ? noteLine("Loan 2 Warranty Damage", el("loan2_prevWarrantyDamage") ? el("loan2_prevWarrantyDamage").textContent : "") : "",
       combined ? noteLine("Loan 2 Subtotal", el("loan2_prevSubtotal") ? el("loan2_prevSubtotal").textContent : "") : "",
-      noteLine("Energy Savings Calculation Result", el("prevEnergyDamage") ? el("prevEnergyDamage").textContent : ""),
+      noteLine("Energy Savings Calculation Result", el("prevEnergyDamage") ? boldClaim(el("prevEnergyDamage").textContent) : ""),
       noteLine("Energy Damage Applied to Total", money(calculateSharedEnergyDamage().amount)),
       noteLine("Out-of-Pocket Damage", el("prevOOPDamage") ? el("prevOOPDamage").textContent : ""),
       noteLine("Install / Manufacturer Damage", el("prevInstallDamage") ? el("prevInstallDamage").textContent : ""),
@@ -993,7 +997,7 @@
     const explainerSection = noteSection("CALCULATOR EXPLAINERS", [
       noteLine("Dealer Fee Explainer", el("detailDealer") ? el("detailDealer").textContent : ""),
       noteLine("Mosaic Explainer", el("detailMosaic") ? el("detailMosaic").textContent : ""),
-      noteLine("Energy Explainer", el("detailEnergy") ? el("detailEnergy").textContent : ""),
+      noteLine("Energy Explainer", el("detailEnergy") ? boldClaim(el("detailEnergy").textContent) : ""),
       noteLine("Warranty Explainer", el("detailWarranty") ? el("detailWarranty").textContent : ""),
       noteLine("Out-of-Pocket Explainer", el("detailOOP") ? el("detailOOP").textContent : ""),
       noteLine("Installation Explainer", el("detailInstall") ? el("detailInstall").textContent : ""),
